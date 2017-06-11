@@ -8,7 +8,7 @@
 #include <memory.h>
 #include <algorithm>
 
-#define TABLE_SIZE 100000
+#define TABLE_SIZE 1000000
 
 using namespace std;
 using namespace std::chrono;
@@ -112,7 +112,7 @@ typedef IndexIterator<IntMap> MapIterator;*/
 
 
 template <typename DataStructure>
-void triejoin(DataStructure** tbl_list) {
+int triejoin(DataStructure** tbl_list, bool print_runtime = true) {
 	auto start = high_resolution_clock::now();
 
 	// the vector itr contains an iterator for each table
@@ -155,6 +155,29 @@ void triejoin(DataStructure** tbl_list) {
 				break;
 		}
 	}
+
+	if (print_runtime) {
+		double runtime = duration_cast<duration<double>>(high_resolution_clock::now()-start).count();
+		cout << "trie join: size of join = " << hits << ", runtime: " << runtime << std::endl;
+	}
+
+	return hits;
+}
+
+void triejoin_unsorted(Table** tbl_list) {	
+	auto start = high_resolution_clock::now();
+
+	// sort each table
+	Table* table_itr = tbl_list[0];
+	int j = 1;
+	while (table_itr != NULL) {
+		std::sort(table_itr->begin(), table_itr->end());
+		table_itr = tbl_list[j++];
+	}
+
+	// do the join
+	int hits = triejoin(tbl_list, false);
+
 	double runtime = duration_cast<duration<double>>(high_resolution_clock::now()-start).count();
 	cout << "trie join: size of join = " << hits << ", runtime: " << runtime << std::endl;
 }
@@ -163,7 +186,7 @@ void init_table(Table& tb) {
 	int cur = 0;
 	tb.push_back(cur);
 	for (int i = 1; i < TABLE_SIZE; i++) {
-		cur += 1+rand()%10;
+		cur += 1+rand()%100;
 		tb.push_back(cur);
 	}
 }
@@ -281,24 +304,34 @@ int main() {
 		print_table(tb3);
 	}
 
-	cout << "TEST 1: Join 2 sorted arrays" << endl;
 	Table* two_tables[] = {&tb1, &tb2, NULL};
+	IntMap* two_maps[] = {&map[0], &map[1], NULL};
+	Table* three_tables[] = {&tb1, &tb2, &tb3, NULL};
+	IntMap* three_maps[] = {&map[0], &map[1], &map[2], NULL};
+
+	cout << "TEST 1: Join 2 sorted arrays" << endl;
 	hashjoin2(two_tables);
 	triejoin(two_tables);
 	cout << endl;
 
 	cout << "TEST 2: Join 2 indexed tables" << endl;
-	IntMap* two_maps[] = {&map[0], &map[1], NULL};
 	triejoin(two_maps);
 	cout << endl;
 
 	cout << "TEST 3: Join 3 sorted arrays" << endl;
-	Table* three_tables[] = {&tb1, &tb2, &tb3, NULL};
 	hashjoin3(three_tables);
 	triejoin(three_tables);
 	cout << endl;
 
 	cout << "TEST 4: Join 3 indexed tables" << endl;
-	IntMap* three_maps[] = {&map[0], &map[1], &map[2], NULL};
 	triejoin(three_maps);
+	cout << endl;
+
+	cout << "TEST 5: Join 3 unsorted arrays" << endl;
+	std::random_shuffle(tb1.begin(), tb1.end());
+	std::random_shuffle(tb2.begin(), tb2.end());
+	std::random_shuffle(tb3.begin(), tb3.end());
+	hashjoin3(three_tables);
+	triejoin_unsorted(three_tables);
+	cout << endl;
 }
